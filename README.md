@@ -1,7 +1,7 @@
 ### Powerplant power 
 This app uses the flask python framework and a virtual environment, to run the powerplant app is required to install '''requirements.txt''' and recomended to do it in a virtual environment. 
 #### To run the App
-Is required to install Docker or other container manager.
+Is required to install Docker or other container manager. The non production mode is still available with the command `flask run -p8888` on the root directory.
 **build the image with:**
     `docker build powerplant:codechallenge .`
 **then run the container exposing the port 8888:**

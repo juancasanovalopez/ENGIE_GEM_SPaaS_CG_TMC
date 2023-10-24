@@ -1,30 +1,38 @@
-""" DocString """
-import os
+""" Code Challenge from ENGIE_GEM_SPaaS and TMC """
 from operator import itemgetter
-from flask import Flask, jsonify, app, request
-
-basedir = os.path.abspath(os.path.dirname(__file__))
+from flask import Flask, jsonify, app, request, abort
 
 app = Flask(__name__)
-app.config['TESTING'] = False
 
 def read_json(key,json):
-    """ search the json key in content, content is a json file """
+    """ Search the json key in content, content is a json file """
     if key in json:
         result = json[key]
-        print(key,' found: ',result,' - OK ')
+        app.logger.info(key,' found: ',result,' - OK')
+    else:
+        app.logger.info(key,'NOT found')
+        abort(400)
     return result
 
 @app.route('/productionplan', methods=['GET', 'POST'])
 def producionplan():
-    """ Docstring"""
+    """ This is the main function that calculates the 
+    load each powerplant shoul give to achieve 
+    the required load by network"""
+
+    # get data!
     load = read_json("load",request.json)
     powerplants = read_json("powerplants",request.json)
     fuels = read_json("fuels",request.json)
+
+    # sort data and initialize!
     powerplants_efficiency = sorted(powerplants, key=itemgetter('efficiency'), reverse=True)
     powerplants_p = {}
+    powerplants_p = powerplants_efficiency
+    res_load = load
+    sum_p = 0
 
-    result = 0
+    # Calculate load available from each plant
     for powerplant in powerplants_efficiency:
         if powerplant["type"] == "windturbine":
             powerplant["p"] = powerplant["pmax"]* fuels["wind(%)"] / 100
@@ -33,15 +41,20 @@ def producionplan():
         elif powerplant["type"] == "turbojet":
             powerplant["p"] = powerplant["pmax"]* fuels["wind(%)"] / 100
 
+    # Search which plant gives less thann 100%
     for powerplant in powerplants_efficiency:
-        if load - result <= 0:
-            break
-        result += powerplant["p"]
-        print(result)
-    if result < load:
-        print("NOT enough power!")
+        res_load -= powerplant["p"]
+        if res_load < 0:
+            powerplant["p"] = 0
 
-    powerplants_p = powerplants_efficiency
+    # Calculte load of the plant wich is not at 100%
+    for powerplant in powerplants_efficiency:
+        sum_p += powerplant["p"]
+        if powerplant["p"] == 0:
+            powerplant["p"] = load - sum_p
+            break
+
+    # delete extra data from dictionary
     for powerplant in powerplants_p:
         del powerplant["type"]
         del powerplant["efficiency"]
@@ -51,5 +64,5 @@ def producionplan():
     return jsonify(powerplants_efficiency)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
     app.run(host='localhost')
